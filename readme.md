@@ -9,13 +9,14 @@ A fast, multithreaded TCP port scanner with banner grabbing capabilities.
 - **Customizable port selection** - Scan specific ports, ranges, or common ports
 - **Banner grabbing** - Automatically detect service banners
 - **Clean output** - Easy-to-read results with clear formatting
+- **JSON output** - Export results in structured JSON format
 
 ## Installation
 
 No special installation required. Just ensure you have Python 3.7+ installed.
 
 ```bash
-python3 port_scan.py --help
+python3 port_scanner.py --help
 ```
 
 ## Usage
@@ -25,19 +26,19 @@ python3 port_scan.py --help
 Scan a single host:
 
 ```bash
-python3 port_scan.py 192.168.1.1
+python3 port_scanner.py 192.168.1.1
 ```
 
 Scan a CIDR network:
 
 ```bash
-python3 port_scan.py 192.168.1.0/24
+python3 port_scanner.py 192.168.1.0/24
 ```
 
 Scan an IP range:
 
 ```bash
-python3 port_scan.py 192.168.1.1-192.168.1.10
+python3 port_scanner.py 192.168.1.1-192.168.1.10
 ```
 
 ### Port Selection
@@ -45,31 +46,31 @@ python3 port_scan.py 192.168.1.1-192.168.1.10
 Scan default ports (1-1024):
 
 ```bash
-python3 port_scan.py 127.0.0.1
+python3 port_scanner.py 127.0.0.1
 ```
 
 Scan common ports:
 
 ```bash
-python3 port_scan.py 127.0.0.1 -p top
+python3 port_scanner.py 127.0.0.1 -p top
 ```
 
 Scan specific ports:
 
 ```bash
-python3 port_scan.py 127.0.0.1 -p 22,80,443,3306
+python3 port_scanner.py 127.0.0.1 -p 22,80,443,3306
 ```
 
 Scan a port range:
 
 ```bash
-python3 port_scan.py 127.0.0.1 -p 1-1000
+python3 port_scanner.py 127.0.0.1 -p 1-1000
 ```
 
 Scan multiple ranges and ports:
 
 ```bash
-python3 port_scan.py 127.0.0.1 -p 22,80,443,1000-2000
+python3 port_scanner.py 127.0.0.1 -p 22,80,443,1000-2000
 ```
 
 ### Advanced Options
@@ -77,20 +78,34 @@ python3 port_scan.py 127.0.0.1 -p 22,80,443,1000-2000
 **Adjust number of threads** (default: 200):
 
 ```bash
-python3 port_scan.py 192.168.1.0/24 -p top -t 100
+python3 port_scanner.py 192.168.1.0/24 -p top -t 100
 ```
 
 **Change timeout** (default: 0.8 seconds):
 
 ```bash
-python3 port_scan.py 127.0.0.1 --timeout 2.0 -p 1-10000
+python3 port_scanner.py 127.0.0.1 --timeout 2.0 -p 1-10000
 ```
 
 **Customize banner grab size** (default: 1024 bytes):
 
 ```bash
-python3 port_scan.py 127.0.0.1 --banner-len 512
+python3 port_scanner.py 127.0.0.1 --banner-len 512
 ```
+
+**Export results as JSON**  
+
+```bash
+# Save to file
+python3 port_scanner.py 192.168.1.0/24 -p top --json report.json
+
+# Print JSON to stdout (great for piping)
+python3 port_scanner.py 127.0.0.1  --json -
+
+# Combine with --quiet to get pure JSON (no terminal noise)
+python3 port_scanner.py 127.0.0.1  --json - --quiet
+```
+
 
 ## Command Line Options
 
@@ -114,6 +129,8 @@ optional arguments:
   --timeout TIMEOUT     Socket connect timeout in seconds (default: 0.8)
 
   --banner-len LENGTH   Bytes to read for banner grabbing (default: 1024)
+  --json [FILE]         Save results to JSON file (or "-" for stdout)
+  --quiet               Suppress the pretty terminal summary
 ```
 
 ## Examples
@@ -121,7 +138,7 @@ optional arguments:
 ### Example 1: Quick scan of local network
 
 ```bash
-python3 port_scan.py 192.168.1.0/24 -p top -t 100
+python3 port_scanner.py 192.168.1.0/24 -p top -t 100
 ```
 
 **Output:**
@@ -151,7 +168,7 @@ OPEN PORTS:
 ### Example 2: Scan specific ports on a single host
 
 ```bash
-python3 port_scan.py 127.0.0.1 -p 22,80,443,3306,5432,8080,8443
+python3 port_scanner.py 127.0.0.1 -p 22,80,443,3306,5432,8080,8443
 ```
 
 **Output:**
@@ -179,7 +196,7 @@ OPEN PORTS:
 ### Example 3: Deep scan with longer timeout
 
 ```bash
-python3 port_scan.py 10.0.0.1-10.0.0.5 -p 1-10000 -t 50 --timeout 2.0
+python3 port_scanner.py 10.0.0.1-10.0.0.5 -p 1-10000 -t 50 --timeout 2.0
 ```
 
 This scans 5 hosts across 10,000 ports each with 50 threads and 2-second timeout.
