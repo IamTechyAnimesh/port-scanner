@@ -112,6 +112,8 @@ def main():
     parser.add_argument('-t', '--threads', type=int, default=200, help='Number of worker threads (default: 200)')
     parser.add_argument('--timeout', type=float, default=0.8, help='Socket connect timeout in seconds (default: 0.8)')
     parser.add_argument('--banner-len', type=int, default=1024, help='Bytes to read for banner grabbing (default: 1024)')
+    parser.add_argument('--json', type=str, metavar='FILE', const='-', nargs='?', help='Save results to JSON file (or "-" for stdout)')
+    parser.add_argument('--quiet', action='store_true', help='Suppress the pretty terminal summary')
     args = parser.parse_args()
 
     targets = expand_targets(args.target)
@@ -125,9 +127,11 @@ def main():
         return
     
     total_tasks = len(targets) * len(ports)
-    print(f"Targets: {len(targets)} -> {targets[:5]}{'...' if len(targets) > 5 else ''}")
-    print(f"Ports: {len(ports)} -> {ports[:10]}{'...' if len(ports) > 10 else ''}")
-    print(f"Total scans: {total_tasks}, Threads: {args.threads}, Timeout: {args.timeout}s")
+
+    if not args.quiet:
+        print(f"Targets: {len(targets)} -> {targets[:5]}{'...' if len(targets) > 5 else ''}")
+        print(f"Ports: {len(ports)} -> {ports[:10]}{'...' if len(ports) > 10 else ''}")
+        print(f"Total scans: {total_tasks}, Threads: {args.threads}, Timeout: {args.timeout}s")
     
     start = datetime.now(timezone.utc)
     results = []
@@ -141,7 +145,7 @@ def main():
         for fut in as_completed(futures):
             try:
                 r = fut.result()
-                if r['open']:
+                if r['open'] and not args.quiet:
                     banner_str = f" -> {r['banner']}" if r['banner'] else ""
                     print(f"[OPEN] {r['host']}:{r['port']}{banner_str}")
                 results.append(r)
@@ -150,25 +154,71 @@ def main():
 
     duration = (datetime.now(timezone.utc) - start).total_seconds()
     open_ports = [r for r in results if r['open']]
+
+    # ======================
+    # Build compact JSON output
+    # ======================
+    output = {
+        "scan_start": start.isoformat(),
+        "scan_end": datetime.now(timezone.utc).isoformat(),
+        "duration_seconds": round(duration, 3),
+        
+         "config": {
+            "target_input": args.target,          
+            "ports_input": args.ports,            
+            "target_count": len(targets),
+            "ports_count": len(ports),
+            "total_scans": total_tasks,
+            "threads": args.threads,
+            "timeout": args.timeout,
+            "banner_grab": args.banner_len > 0
+        },
+
+        "summary": {
+            "open_ports_found": len(open_ports),
+            "closed_or_filtered": total_tasks - len(open_ports)
+        },
+
+        "findings": open_ports
+   
+    }
+
+    # ======================
+    # Save JSON if requested
+    # ======================
+
+    if args.json:
+        json_output = json.dumps(output, indent=2)
+        if args.json == "-":
+            print(json_output)
+        else:
+            with open(args.json, "w", encoding="utf-8") as f:
+                f.write(json_output)
+            print(f"[+] Full JSON report saved → {args.json}")
+
+    # ======================
+    # Pretty terminal output (always shown unless --quiet)
+    # ======================
+
+    if not args.quiet:
+        print("=" * 65)
+        print("PORT SCAN RESULTS".center(65))
+        print("=" * 65)
+        print(f"Scan Duration: {duration:.2f} seconds")
+        print(f"Targets: {len(targets)}")
+        print(f"Ports Checked: {len(ports)}")
+        print(f"Total Scans: {total_tasks}")
+        print(f"Open Ports Found: {len(open_ports)}")
+        print("=" * 65)
     
-    print("=" * 65)
-    print("PORT SCAN RESULTS".center(65))
-    print("=" * 65)
-    print(f"Scan Duration: {duration:.2f} seconds")
-    print(f"Targets: {len(targets)}")
-    print(f"Ports Checked: {len(ports)}")
-    print(f"Total Scans: {total_tasks}")
-    print(f"Open Ports Found: {len(open_ports)}")
-    print("=" * 65)
-    
-    if open_ports:
-        print("\nOPEN PORTS:")
-        for result in sorted(open_ports, key=lambda x: (x['host'], x['port'])):
-            banner_info = f" | {result['banner']}" if result['banner'] else ""
-            print(f"  {result['host']:15} : {result['port']:5d}{banner_info}")
-    else:
-        print("\nNo open ports found.")
-    print()
+        if open_ports:
+            print("\nOPEN PORTS:")
+            for result in sorted(open_ports, key=lambda x: (x['host'], x['port'])):
+                banner_info = f" | {result['banner']}" if result['banner'] else ""
+                print(f"  {result['host']:15} : {result['port']:5d}{banner_info}")
+        else:
+            print("\nNo open ports found.")
+        print()
 
 if __name__ == '__main__':
     main()
